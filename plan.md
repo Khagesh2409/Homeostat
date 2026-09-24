@@ -2,6 +2,9 @@
 
 > An autonomous AI operator that runs the infrastructure it lives on: self-healing, self-improving, budget-aware, and adversarially tested.
 
+# Note:
+Don't use em dashes anywhere in the code or commit messages, only use hyphens. Also in commit messages dont start with 'chore:' or 'docs:' or 'feat:' or similar things, just write the message. Also dont use "i" or "we" in the commit messages, just write the message.
+
 ---
 
 ## Architecture Overview
