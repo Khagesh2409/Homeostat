@@ -1,0 +1,123 @@
+---
+# ──────────────────────────────────────────────────────────────
+# Homeostat — Local Development Stack
+# ──────────────────────────────────────────────────────────────
+# Services:
+#   prometheus    - metrics collection (localhost:9090)
+#   alertmanager  - alert routing to agent (localhost:9093)
+#   localstack    - mock AWS (S3, DynamoDB) (localhost:4566)
+#   agent         - the Homeostat agent (localhost:8080)
+#
+# Usage:
+#   docker compose up -d           # start everything
+#   docker compose up localstack   # start only localstack
+#   docker compose logs -f agent   # tail agent logs
+#   docker compose down            # stop everything
+# ──────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Prometheus ──────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: homeostat-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=24h
+      - --web.enable-lifecycle
+    restart: unless-stopped
+    networks:
+      - homeostat
+
+  # ── Alertmanager ────────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: homeostat-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    restart: unless-stopped
+    networks:
+      - homeostat
+
+  # ── LocalStack (mock AWS) ───────────────────────────────────
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: homeostat-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,dynamodb,ssm,iam,sts,budgets
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - DEBUG=0
+      - PERSISTENCE=1         # survive restarts
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./docker/localstack/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh:ro
+    restart: unless-stopped
+    networks:
+      - homeostat
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Homeostat Agent ─────────────────────────────────────────
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: homeostat-agent
+    ports:
+      - "8080:8080"
+    environment:
+      # Use LocalStack instead of real AWS
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      # Agent config
+      - HOMEOSTAT_ENV=dev
+      - HOMEOSTAT_LOG_LEVEL=DEBUG
+      - HOMEOSTAT_BEDROCK_MODEL_ID=anthropic.claude-3-haiku-20240307-v1:0
+      - HOMEOSTAT_MEMORY_TABLE=homeostat-runbooks
+      - HOMEOSTAT_STATE_TABLE=homeostat-state
+      - HOMEOSTAT_S3_BUCKET=homeostat-memory
+      # In dev: point at the docker compose alertmanager
+      - HOMEOSTAT_ALERTMANAGER_URL=http://alertmanager:9093
+      - HOMEOSTAT_WATCHDOG_URL=http://host.docker.internal:8081  # watchdog runs outside
+    volumes:
+      - ./agent/src:/app/src:ro    # live reload in dev
+    depends_on:
+      localstack:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - homeostat
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  prometheus_data:
+  localstack_data:
+
+networks:
+  homeostat:
+    driver: bridge

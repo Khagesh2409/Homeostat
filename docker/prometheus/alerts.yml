@@ -1,0 +1,22 @@
+groups:
+  - name: homeostat-dev
+    rules:
+      # Alert if the agent itself goes down
+      - alert: HomeostatAgentDown
+        expr: up{job="homeostat-agent"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Homeostat agent is down"
+          description: "The Homeostat agent has been unreachable for 30 seconds."
+
+      # Simulate a pod crash loop (for local testing)
+      - alert: KubePodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting frequently."

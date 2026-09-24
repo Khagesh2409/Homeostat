@@ -1,0 +1,16 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'namespace']
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 5m
+  receiver: homeostat-agent-webhook
+
+receivers:
+  - name: homeostat-agent-webhook
+    webhook_configs:
+      - url: 'http://agent:8080/alerts'
+        send_resolved: true
+        max_alerts: 20

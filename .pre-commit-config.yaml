@@ -1,0 +1,50 @@
+repos:
+  # ── Python: Ruff (linter + formatter) ──────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^(agent|watchdog|chaos)/
+      - id: ruff-format
+        files: ^(agent|watchdog|chaos)/
+
+  # ── Python: Mypy (type checker) ────────────────
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^agent/src/
+        additional_dependencies:
+          - pydantic>=2.9.0
+          - types-boto3
+
+  # ── Terraform: format check ────────────────────
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.1
+    hooks:
+      - id: terraform_fmt
+        files: ^terraform/
+      - id: terraform_validate
+        files: ^terraform/
+
+  # ── YAML: lint ─────────────────────────────────
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        files: ^k8s/
+        args: [-c=.yamllint.yml]
+
+  # ── General ────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key        # never commit secrets
+      - id: check-added-large-files
+        args: [--maxkb=500]

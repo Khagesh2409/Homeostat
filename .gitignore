@@ -1,0 +1,72 @@
+# ── Python ────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+*.egg-info/
+dist/
+build/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Terraform ─────────────────────────────────
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!terraform.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ── Docker ────────────────────────────────────
+.dockerignore
+
+# ── Kubernetes ────────────────────────────────
+kubeconfig
+*.kubeconfig
+
+# ── IDE ───────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Secrets (NEVER commit these) ──────────────
+*.pem
+*.key
+*.crt
+*.p12
+*credentials*
+*secret*
+aws-credentials
+.aws/
+
+# ── Chaos test results ────────────────────────
+chaos/results/
+chaos/reports/
+
+# ── Build artifacts ───────────────────────────
+*.log
+response.json

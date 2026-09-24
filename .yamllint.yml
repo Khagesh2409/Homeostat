@@ -1,0 +1,10 @@
+---
+# yamllint configuration for Kubernetes manifests
+extends: default
+rules:
+  line-length:
+    max: 120
+  comments:
+    min-spaces-from-content: 1
+  truthy:
+    allowed-values: ['true', 'false']
