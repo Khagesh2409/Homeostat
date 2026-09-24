@@ -1,0 +1,14 @@
+# Always use LF line endings in the repo (even on Windows)
+* text=auto eol=lf
+
+# Explicitly binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Shell scripts must be LF
+*.sh text eol=lf
+docker/localstack/init-aws.sh text eol=lf
