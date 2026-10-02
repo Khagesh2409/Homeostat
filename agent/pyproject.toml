@@ -100,6 +100,8 @@ addopts = [
     "--cov=homeostat",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
-    "--cov-fail-under=70",
+    # --cov-fail-under is intentionally omitted here.
+    # Coverage gate is enforced in CI via: make test-cov
+    # Running a subset of tests locally shouldn't fail on package-wide coverage.
     "-v",
 ]
