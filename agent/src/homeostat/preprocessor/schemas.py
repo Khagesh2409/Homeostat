@@ -7,7 +7,6 @@ It is never raw log text.
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 

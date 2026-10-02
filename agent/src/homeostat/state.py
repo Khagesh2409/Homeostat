@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from homeostat.preprocessor.schemas import ErrorSignature
-
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -54,11 +53,11 @@ class Alert:
     message: str
     labels: dict[str, str] = field(default_factory=dict)
     annotations: dict[str, str] = field(default_factory=dict)
-    received_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    received_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     alert_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
 
     @classmethod
-    def from_alertmanager_payload(cls, payload: dict[str, Any]) -> "Alert":
+    def from_alertmanager_payload(cls, payload: dict[str, Any]) -> Alert:
         """Parse an Alertmanager webhook payload into an Alert."""
         labels = payload.get("labels", {})
         annotations = payload.get("annotations", {})
@@ -73,7 +72,7 @@ class Alert:
         )
 
     @classmethod
-    def from_event_payload(cls, payload: dict[str, Any]) -> "Alert":
+    def from_event_payload(cls, payload: dict[str, Any]) -> Alert:
         """Parse a K8s event watcher payload into an Alert."""
         return cls(
             alertname=payload.get("reason", "K8sEvent"),
@@ -118,7 +117,7 @@ class ActionResult:
     success: bool
     output: str = ""
     error: str = ""
-    executed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    executed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     dry_run: bool = False
 
 
@@ -137,7 +136,7 @@ class VerificationResult:
     success: bool
     checks_passed: list[str] = field(default_factory=list)
     checks_failed: list[str] = field(default_factory=list)
-    verified_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    verified_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     notes: str = ""
 
 
@@ -163,7 +162,7 @@ class AgentState(TypedDict, total=False):
 
     # ── Incoming alert ────────────────────────────────────────
     current_alert: Alert
-    raw_alert_payload: dict       # Original unprocessed payload (kept for audit)
+    raw_alert_payload: dict[str, Any]       # Original unprocessed payload (kept for audit)
 
     # ── Pre-processed log context ─────────────────────────────
     error_signatures: list[ErrorSignature]   # From the log pre-processor
@@ -174,7 +173,7 @@ class AgentState(TypedDict, total=False):
     tier0_playbook_name: str      # Which Tier-0 playbook matched
 
     # ── Memory / runbook lookup ───────────────────────────────
-    retrieved_runbook: Optional[dict]    # The runbook from DynamoDB, if found
+    retrieved_runbook: dict[str, Any] | None    # The runbook from DynamoDB, if found
     runbook_confidence: float            # 0.0–1.0
 
     # ── LLM reasoning ────────────────────────────────────────

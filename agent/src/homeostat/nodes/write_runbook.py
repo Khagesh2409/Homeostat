@@ -9,7 +9,7 @@ skip the LLM and execute it deterministically.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from homeostat.state import AgentState, IncidentOutcome
 
@@ -28,7 +28,7 @@ def write_runbook(state: AgentState) -> AgentState:
     log = list(state.get("incident_log", []))
     plan = state.get("plan")
     signature = state.get("failure_signature")
-    
+
     # If this was Tier-0, we don't write a new runbook
     if state.get("is_tier0"):
         log.append(f"[{_now()}] WRITE_RUNBOOK: Tier-0 handled this natively, skipping write")
@@ -67,4 +67,4 @@ def write_runbook(state: AgentState) -> AgentState:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")

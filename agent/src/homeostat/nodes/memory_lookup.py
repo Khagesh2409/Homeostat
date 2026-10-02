@@ -8,7 +8,9 @@ If not found, route to diagnose (LLM cold start).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
+from typing import Any
 
 from homeostat.state import AgentState
 
@@ -69,7 +71,7 @@ def route_after_memory_lookup(state: AgentState) -> str:
     return "diagnose"
 
 
-def _compute_confidence(runbook: dict) -> float:
+def _compute_confidence(runbook: dict[str, Any]) -> float:
     """
     Compute confidence score for a retrieved runbook.
 
@@ -82,8 +84,8 @@ def _compute_confidence(runbook: dict) -> float:
     if total == 0:
         return 0.5  # New runbook, uncertain
     # Laplace smoothing with alpha=1
-    return (success + 1) / (total + 2)
+    return float((success + 1) / (total + 2))
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")

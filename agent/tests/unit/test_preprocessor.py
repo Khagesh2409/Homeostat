@@ -10,20 +10,17 @@ Test categories:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-import pytest
+from datetime import UTC, datetime
 
 from homeostat.preprocessor.clusterer import LogClusterer, _normalize
 from homeostat.preprocessor.sanitizer import Sanitizer
-from homeostat.preprocessor.schemas import ErrorSignature, RawLogLine, PreprocessorResult
-
+from homeostat.preprocessor.schemas import ErrorSignature, PreprocessorResult, RawLogLine
 
 # ── Helpers ───────────────────────────────────────────────────
 
 
 def _ts() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _line(message: str, source: str = "pod/nginx-abc123-xyz12", namespace: str = "default") -> RawLogLine:
@@ -259,8 +256,8 @@ class TestSchemas:
             pattern_hash="a3f9b2c1",
             sample_message="Error: container failed to start",
             count=15,
-            first_seen=datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
-            last_seen=datetime(2024, 1, 15, 10, 1, 0, tzinfo=timezone.utc),
+            first_seen=datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC),
+            last_seen=datetime(2024, 1, 15, 10, 1, 0, tzinfo=UTC),
             namespace="production",
         )
 

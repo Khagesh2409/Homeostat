@@ -7,16 +7,12 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-from langgraph.graph import StateGraph
-
-from homeostat.graph import build_graph
-from homeostat.state import AgentMode, AgentState, Alert, AlertSeverity, IncidentOutcome
+from homeostat.state import AgentMode, AgentState, Alert, AlertSeverity
 
 
-def test_triage_tier0_routing():
-    from homeostat.nodes.triage import triage, route_after_triage
-    
+def test_triage_tier0_routing() -> None:
+    from homeostat.nodes.triage import route_after_triage, triage
+
     alert = Alert(
         alertname="KubePodCrashLooping",
         severity=AlertSeverity.CRITICAL,
@@ -24,23 +20,23 @@ def test_triage_tier0_routing():
         source="pod/nginx",
         message="crash",
     )
-    
+
     state: AgentState = {"current_alert": alert}
     result = triage(state)
-    
+
     assert result["is_tier0"] is True
     assert result["mode"] == AgentMode.INCIDENT
-    
+
     # State update
     state.update(result)
-    
+
     route = route_after_triage(state)
     assert route == "tier0"
 
 
-def test_triage_memory_lookup_routing():
-    from homeostat.nodes.triage import triage, route_after_triage
-    
+def test_triage_memory_lookup_routing() -> None:
+    from homeostat.nodes.triage import route_after_triage, triage
+
     alert = Alert(
         alertname="SomeUnknownAlert",
         severity=AlertSeverity.WARNING,
@@ -48,36 +44,36 @@ def test_triage_memory_lookup_routing():
         source="pod/nginx",
         message="unknown",
     )
-    
+
     state: AgentState = {"current_alert": alert}
     result = triage(state)
-    
+
     assert result["is_tier0"] is False
-    
+
     state.update(result)
     route = route_after_triage(state)
     assert route == "memory_lookup"
 
 
-def test_memory_lookup_routing():
+def test_memory_lookup_routing() -> None:
     from homeostat.nodes.memory_lookup import route_after_memory_lookup
-    
+
     # Confidence above threshold -> validate
     state: AgentState = {"retrieved_runbook": {"dummy": "data"}, "runbook_confidence": 0.8}
     assert route_after_memory_lookup(state) == "validate"
-    
+
     # Confidence below threshold -> diagnose
-    state: AgentState = {"retrieved_runbook": {"dummy": "data"}, "runbook_confidence": 0.5}
-    assert route_after_memory_lookup(state) == "diagnose"
-    
+    state2: AgentState = {"retrieved_runbook": {"dummy": "data"}, "runbook_confidence": 0.5}
+    assert route_after_memory_lookup(state2) == "diagnose"
+
     # No runbook -> diagnose
-    state: AgentState = {"retrieved_runbook": None, "runbook_confidence": 0.0}
-    assert route_after_memory_lookup(state) == "diagnose"
+    state3: AgentState = {"retrieved_runbook": None, "runbook_confidence": 0.0}
+    assert route_after_memory_lookup(state3) == "diagnose"
 
 
-def test_validate_routing():
-    from homeostat.nodes.validate import validate, route_after_validate
-    
+def test_validate_routing() -> None:
+    from homeostat.nodes.validate import route_after_validate, validate
+
     alert = Alert(
         alertname="CrashLoopBackOff",
         severity=AlertSeverity.WARNING,
@@ -85,7 +81,7 @@ def test_validate_routing():
         source="deployment/nginx",
         message="",
     )
-    
+
     # Matching runbook
     runbook = {"failure_signature": "deployment/nginx:CrashLoopBackOff"}
     state: AgentState = {
@@ -93,12 +89,12 @@ def test_validate_routing():
         "failure_signature": "deployment/nginx:CrashLoopBackOff",
         "retrieved_runbook": runbook,
     }
-    
+
     result = validate(state)
     assert "retrieved_runbook" not in result # it keeps it as is
     state.update(result)
     assert route_after_validate(state) == "execute"
-    
+
     # Mismatching runbook (different resource type)
     runbook_mismatch = {"failure_signature": "node/*:CrashLoopBackOff"}
     state_mismatch: AgentState = {
@@ -106,7 +102,7 @@ def test_validate_routing():
         "failure_signature": "deployment/nginx:CrashLoopBackOff",
         "retrieved_runbook": runbook_mismatch,
     }
-    
+
     result_mismatch = validate(state_mismatch)
     assert result_mismatch["retrieved_runbook"] is None
     state_mismatch.update(result_mismatch)
@@ -114,12 +110,12 @@ def test_validate_routing():
 
 
 @patch("homeostat.llm.bedrock.boto3.client")
-def test_diagnose_node(mock_boto_client):
+def test_diagnose_node(mock_boto_client: MagicMock) -> None:
     from homeostat.nodes.diagnose import diagnose
-    
+
     mock_bedrock = MagicMock()
     mock_boto_client.return_value = mock_bedrock
-    
+
     mock_response = {
         "body": MagicMock(
             read=lambda: json.dumps({
@@ -129,7 +125,7 @@ def test_diagnose_node(mock_boto_client):
         )
     }
     mock_bedrock.invoke_model.return_value = mock_response
-    
+
     alert = Alert(
         alertname="OOMKilled",
         severity=AlertSeverity.CRITICAL,
@@ -137,10 +133,10 @@ def test_diagnose_node(mock_boto_client):
         source="pod/db",
         message="",
     )
-    
+
     state: AgentState = {"current_alert": alert}
     result = diagnose(state)
-    
+
     assert "OOM due to memory leak" in result["diagnosis"]
     assert result["llm_calls"] == 1
     assert result["token_count"] == 150

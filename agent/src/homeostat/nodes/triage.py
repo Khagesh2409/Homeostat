@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from homeostat.state import AgentMode, AgentState, Alert, AlertSeverity, IncidentOutcome
+from homeostat.state import AgentMode, AgentState, Alert, IncidentOutcome
 
 logger = logging.getLogger(__name__)
 
@@ -96,4 +96,4 @@ def route_after_triage(state: AgentState) -> str:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")

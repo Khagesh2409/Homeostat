@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from homeostat.state import AgentState, VerificationResult
 
@@ -26,12 +26,12 @@ def verify(state: AgentState) -> AgentState:
     # Note: In a real environment, we'd query Prometheus here.
     # For now, we will assume success if the action didn't error out,
     # but in a production setup this would poll the metrics/alerts.
-    
+
     log = list(state.get("incident_log", []))
     alert = state.get("current_alert")
 
     log.append(f"[{_now()}] VERIFY: Checking if incident is resolved")
-    
+
     # We add a slight delay to let the cluster state settle
     time.sleep(2)
 
@@ -75,12 +75,12 @@ def route_after_verify(state: AgentState) -> str:
     # Increment retry count before routing to diagnose or escalate
     retry_count = state.get("retry_count", 0) + 1
     max_retries = state.get("max_retries", 3)
-    
+
     if retry_count >= max_retries:
         return "escalate"
-        
+
     return "diagnose"
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")

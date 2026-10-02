@@ -10,7 +10,7 @@ import importlib
 
 def test_package_importable() -> None:
     """The homeostat package must be importable."""
-    import homeostat  # noqa: F401
+    import homeostat
     assert homeostat.__version__ == "0.1.0"
 
 

@@ -7,6 +7,7 @@ Wires all nodes together according to the Homeostat design.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from langgraph.graph import END, StateGraph
 
@@ -36,10 +37,13 @@ from homeostat.state import AgentState
 logger = logging.getLogger(__name__)
 
 
-def build_graph() -> StateGraph:
+from langgraph.graph.state import CompiledStateGraph
+
+
+def build_graph() -> CompiledStateGraph[Any, Any, Any]:
     """Build and compile the Homeostat agent graph."""
-    
-    workflow = StateGraph(AgentState)
+
+    workflow: StateGraph[Any, Any, Any, Any] = StateGraph(AgentState)
 
     # 1. Add all nodes
     workflow.add_node("triage", triage)
@@ -123,6 +127,6 @@ def build_graph() -> StateGraph:
 
     # Compile the graph
     app = workflow.compile()
-    
+
     logger.info("Compiled LangGraph state machine.")
     return app

@@ -8,15 +8,11 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Any
 
-import os
-from datetime import datetime
-
 import boto3
 import pytest
 from moto import mock_aws
 
 from homeostat.memory.schemas import ActionStep, FailureSignature, Runbook
-
 
 # ── Fixtures ──────────────────────────────────────────────────
 
@@ -172,6 +168,7 @@ class TestRunbookClient:
         with mock_aws():
             # Re-import inside mock context
             import importlib
+
             import homeostat.memory.client as mod
             importlib.reload(mod)
             client = mod.RunbookClient()
@@ -188,6 +185,7 @@ class TestRunbookClient:
     def test_put_and_get_roundtrip(self, dynamodb_table: None) -> None:
         with mock_aws():
             import importlib
+
             import homeostat.memory.client as mod
             importlib.reload(mod)
             client = mod.RunbookClient()

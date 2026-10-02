@@ -5,7 +5,7 @@ Maintenance node — placeholder for scheduled background tasks.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from homeostat.state import AgentState
 
@@ -22,4 +22,4 @@ def maintenance(state: AgentState) -> AgentState:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")

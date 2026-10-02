@@ -8,7 +8,7 @@ The endpoint_url is None in prod (real AWS) and set to LocalStack URL in dev.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import boto3
 from botocore.exceptions import ClientError
@@ -40,6 +40,43 @@ class RunbookClient:
 
         self._dynamodb = boto3.resource("dynamodb", **kwargs)
         self._table = self._dynamodb.Table(settings.memory_table)
+
+    def get_latest_runbook(self, failure_signature: str) -> dict[str, Any] | None:
+        """Convenience method for LangGraph nodes."""
+        # We don't have the full FailureSignature components, so we just use it as the key
+        try:
+            response = self._table.query(
+                KeyConditionExpression="failure_signature = :sig",
+                ExpressionAttributeValues={":sig": failure_signature},
+                ScanIndexForward=False,
+                Limit=1,
+            )
+            items = response.get("Items", [])
+            if not items:
+                return None
+            return cast(dict[str, Any], items[0])
+        except ClientError:
+            return None
+
+    def save_runbook(self, failure_signature: str, diagnosis: str, plan_steps: list[dict[str, Any]], rationale: str) -> bool:
+        """Convenience method for LangGraph nodes."""
+        item = {
+            "failure_signature": failure_signature,
+            "version": 1,
+            "diagnosis": diagnosis,
+            "action_plan": plan_steps,
+            "discriminating_check": rationale,
+            "times_used": 0,
+            "times_succeeded": 0,
+            "times_failed": 0,
+            "created_at": "now",
+            "last_used": "now",
+        }
+        try:
+            self._table.put_item(Item=item)
+            return True
+        except ClientError:
+            return False
 
     def get_latest(self, signature: FailureSignature) -> Runbook | None:
         """

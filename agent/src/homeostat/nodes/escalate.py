@@ -7,7 +7,7 @@ Logs the failure and updates the state. In a real system, this would page a huma
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from homeostat.state import AgentState, IncidentOutcome
 
@@ -26,7 +26,7 @@ def escalate(state: AgentState) -> AgentState:
 
     log.append(f"[{_now()}] ESCALATE: Maximum retries exceeded or unrecoverable error.")
     log.append(f"[{_now()}] ESCALATE: 🚨 Paging human for incident {incident_id} 🚨")
-    
+
     logger.critical("Escalated incident %s to human operator", incident_id)
 
     return {
@@ -36,4 +36,4 @@ def escalate(state: AgentState) -> AgentState:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")

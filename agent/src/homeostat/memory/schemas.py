@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-
 # ──────────────────────────────────────────────────────────────
 # Failure Signature — the runbook's lookup key
 # ──────────────────────────────────────────────────────────────
@@ -42,7 +41,7 @@ class FailureSignature:
         error_category: str,
         affected_resource: str,
         context: dict[str, Any] | None = None,
-    ) -> "FailureSignature":
+    ) -> FailureSignature:
         """
         Build a FailureSignature, computing the context_hash automatically.
 
@@ -168,7 +167,7 @@ class Runbook:
         }
 
     @classmethod
-    def from_dynamodb_item(cls, item: dict[str, Any]) -> "Runbook":
+    def from_dynamodb_item(cls, item: dict[str, Any]) -> Runbook:
         """Deserialize from DynamoDB item format."""
         import json
         sig_key = item["failure_signature"]

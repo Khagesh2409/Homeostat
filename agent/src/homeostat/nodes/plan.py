@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 from homeostat.state import ActionPlan, ActionStep, AgentState
 
@@ -98,7 +97,7 @@ def plan(state: AgentState) -> AgentState:
         action_plan = ActionPlan(
             steps=steps,
             rationale=plan_data.get("rationale", ""),
-            estimated_risk=plan_data.get("estimated_risk", "medium"),  # type: ignore
+            estimated_risk=plan_data.get("estimated_risk", "medium"),
         )
 
         log.append(
@@ -122,4 +121,4 @@ def plan(state: AgentState) -> AgentState:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")

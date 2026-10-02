@@ -14,7 +14,7 @@ No LLM call. Pure string matching.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from homeostat.state import AgentState
 
@@ -83,4 +83,4 @@ def route_after_validate(state: AgentState) -> str:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")

@@ -8,7 +8,7 @@ If all steps pass, routes to execute. If any step fails, routes back to diagnose
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from homeostat.state import AgentState, DryRunResult
 
@@ -22,7 +22,7 @@ def dry_run(state: AgentState) -> AgentState:
     Input state keys:  plan
     Output state keys: dry_run_result, incident_log
     """
-    from homeostat.tools.executor import execute_step
+    from homeostat.tools.executor import execute_step  # type: ignore[import-untyped]
 
     log = list(state.get("incident_log", []))
     plan = state.get("plan")
@@ -92,4 +92,4 @@ def route_after_dry_run(state: AgentState) -> str:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now(UTC).strftime("%H:%M:%S")
