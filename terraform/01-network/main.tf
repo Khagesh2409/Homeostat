@@ -13,10 +13,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "homeostat-terraform-state-REPLACE_WITH_ACCOUNT_ID"
+    bucket         = "homeostat-terraform-state-975050226684"
     key            = "network/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "homeostat-terraform-lock"
+    use_lockfile   = true
     encrypt        = true
   }
 }
