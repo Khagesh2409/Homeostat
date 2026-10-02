@@ -1,0 +1,124 @@
+# ──────────────────────────────────────────────────────────────
+# Homeostat — kube-prometheus-stack Helm values
+# Stripped down for single-node K3s. Cost-conscious.
+# ──────────────────────────────────────────────────────────────
+#
+# Install with:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo update
+#   helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --create-namespace \
+#     --values k8s/base/prometheus/helm-values.yml
+# ──────────────────────────────────────────────────────────────
+
+# ── Grafana — disable for now, saves ~200MB RAM ───────────────
+grafana:
+  enabled: false
+
+# ── Prometheus ────────────────────────────────────────────────
+prometheus:
+  prometheusSpec:
+    # Only 24h of local retention — we're not a metrics warehouse
+    retention: 24h
+    retentionSize: "8GB"
+
+    scrapeInterval: "15s"
+    evaluationInterval: "15s"
+
+    # Single-node sizing — don't over-allocate
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+    # Pick up our custom alert rules from ConfigMaps in the monitoring namespace
+    ruleSelector:
+      matchLabels:
+        app: homeostat-alerts
+
+    # Pick up our custom scrape configs
+    additionalScrapeConfigs:
+      - job_name: homeostat-agent
+        static_configs:
+          - targets: ['homeostat-agent.homeostat.svc.cluster.local:8080']
+        metrics_path: /metrics
+
+# ── Alertmanager ──────────────────────────────────────────────
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 50m
+        memory: 64Mi
+
+  config:
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: ['alertname', 'namespace', 'severity']
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 5m
+      receiver: homeostat-agent
+
+      # Critical alerts get faster routing
+      routes:
+        - matchers:
+            - severity = critical
+          group_wait: 5s
+          repeat_interval: 2m
+          receiver: homeostat-agent
+
+    receivers:
+      - name: homeostat-agent
+        webhook_configs:
+          - url: 'http://homeostat-agent.homeostat.svc.cluster.local:8080/alerts'
+            send_resolved: true
+            max_alerts: 20
+            http_config:
+              follow_redirects: true
+
+    inhibit_rules:
+      # Don't fire pod alerts if the whole node is down
+      - source_matchers:
+          - alertname = NodeDown
+        target_matchers:
+          - alertname =~ "KubePod.*"
+        equal: ['node']
+
+# ── Node Exporter — keep it slim ──────────────────────────────
+nodeExporter:
+  enabled: true
+
+# ── Kube State Metrics — needed for pod/deploy alerts ────────
+kubeStateMetrics:
+  enabled: true
+
+# ── Default alert rules — disable the noisy ones we don't need
+defaultRules:
+  rules:
+    # Keep these
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    node: true
+    # Disable these — we don't have etcd exposed in K3s
+    etcd: false
+    # Disable these — too noisy for single-node dev
+    kubernetesAbsent: false

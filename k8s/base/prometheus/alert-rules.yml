@@ -1,0 +1,155 @@
+---
+# Custom alert rules for Homeostat
+# Applied as a PrometheusRule CRD (kube-prometheus-stack picks these up automatically)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homeostat-alerts
+  namespace: monitoring
+  labels:
+    app: homeostat-alerts              # must match prometheusSpec.ruleSelector
+    release: monitoring                # picked up by prometheus-operator
+spec:
+  groups:
+    # ── Pod Health ────────────────────────────────────────────
+    - name: pod-health
+      interval: 15s
+      rules:
+        - alert: KubePodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace!="kube-system"}[5m]) * 60 > 3
+          for: 2m
+          labels:
+            severity: critical
+            tier: pod
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash looping"
+            description: >
+              Pod {{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }}
+              is restarting {{ printf "%.2f" $value }} times/min.
+            runbook_hint: "Check logs: kubectl logs {{ $labels.pod }} -n {{ $labels.namespace }} --previous"
+
+        - alert: KubePodNotReady
+          expr: |
+            sum by (namespace, pod) (
+              max by (namespace, pod, condition) (kube_pod_status_conditions{condition="Ready", status="false"})
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            tier: pod
+          annotations:
+            summary: "Pod {{ $labels.pod }} is not ready"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been not ready for 2 minutes."
+
+        - alert: KubePodOOMKilled
+          expr: |
+            kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+          for: 0m
+          labels:
+            severity: warning
+            tier: pod
+          annotations:
+            summary: "Pod {{ $labels.pod }} was OOM killed"
+            description: >
+              Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }}
+              was killed due to out-of-memory. Consider increasing memory limits.
+
+    # ── Node Health ───────────────────────────────────────────
+    - name: node-health
+      interval: 30s
+      rules:
+        - alert: NodeDiskPressure
+          expr: |
+            (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) > 0.85
+          for: 1m
+          labels:
+            severity: warning
+            tier: node
+          annotations:
+            summary: "Node disk usage above 85%"
+            description: "Node disk at {{ printf \"%.1f\" (mul $value 100) }}% — clean up or expand the volume."
+
+        - alert: NodeDiskCritical
+          expr: |
+            (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) > 0.95
+          for: 1m
+          labels:
+            severity: critical
+            tier: node
+          annotations:
+            summary: "Node disk usage critical (>95%)"
+            description: "Node disk at {{ printf \"%.1f\" (mul $value 100) }}% — immediate action required."
+
+        - alert: NodeMemoryPressure
+          expr: |
+            (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.90
+          for: 2m
+          labels:
+            severity: warning
+            tier: node
+          annotations:
+            summary: "Node memory usage above 90%"
+            description: "Node memory at {{ printf \"%.1f\" (mul $value 100) }}%."
+
+        - alert: NodeHighCPU
+          expr: |
+            100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+          for: 5m
+          labels:
+            severity: warning
+            tier: node
+          annotations:
+            summary: "Node CPU usage above 90% for 5 minutes"
+            description: "Sustained high CPU — may indicate a runaway process."
+
+    # ── Homeostat Agent ───────────────────────────────────────
+    - name: homeostat-agent
+      interval: 15s
+      rules:
+        - alert: HomeostatAgentDown
+          expr: |
+            absent(up{job="homeostat-agent"} == 1)
+          for: 1m
+          labels:
+            severity: critical
+            tier: agent
+          annotations:
+            summary: "Homeostat agent is down"
+            description: "The Homeostat agent has been unreachable for 1 minute. No autonomous healing possible."
+
+        - alert: HomeostatBudgetWarning
+          expr: |
+            homeostat_monthly_spend_usd > 80
+          for: 0m
+          labels:
+            severity: warning
+            tier: agent
+          annotations:
+            summary: "Homeostat monthly spend is above $80"
+            description: "Current spend: ${{ $value }}. Agent will throttle non-critical operations."
+
+    # ── Scrape Targets ────────────────────────────────────────
+    - name: scrape-health
+      interval: 30s
+      rules:
+        - alert: TargetDown
+          expr: up == 0
+          for: 2m
+          labels:
+            severity: warning
+            tier: scrape
+          annotations:
+            summary: "Scrape target {{ $labels.job }} is down"
+            description: "Target {{ $labels.instance }} for job {{ $labels.job }} has been unreachable for 2 minutes."
+
+        - alert: PrometheusAlertmanagerDown
+          expr: |
+            absent(up{job="monitoring-alertmanager"} == 1)
+          for: 1m
+          labels:
+            severity: critical
+            tier: infra
+          annotations:
+            summary: "Alertmanager is down"
+            description: "Alertmanager is down — alerts cannot be routed to the agent."

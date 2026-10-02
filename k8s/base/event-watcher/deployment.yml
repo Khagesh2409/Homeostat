@@ -1,0 +1,109 @@
+---
+# ──────────────────────────────────────────────────────────────
+# Kubernetes Event Watcher
+# Watches cluster events and forwards Warning events to the agent
+# ──────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homeostat
+  labels:
+    app.kubernetes.io/managed-by: homeostat
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: event-watcher
+  namespace: homeostat
+
+---
+# RBAC — only needs to READ events cluster-wide
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homeostat-event-watcher
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "services"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homeostat-event-watcher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homeostat-event-watcher
+subjects:
+  - kind: ServiceAccount
+    name: event-watcher
+    namespace: homeostat
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-watcher
+  namespace: homeostat
+  labels:
+    app: event-watcher
+    component: homeostat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: event-watcher
+  template:
+    metadata:
+      labels:
+        app: event-watcher
+        component: homeostat
+    spec:
+      serviceAccountName: event-watcher
+
+      containers:
+        - name: event-watcher
+          image: python:3.12-slim
+          imagePullPolicy: IfNotPresent
+
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install kubernetes httpx --quiet
+              python /app/event_watcher.py
+
+          env:
+            - name: AGENT_EVENTS_URL
+              value: "http://homeostat-agent.homeostat.svc.cluster.local:8080/events"
+            - name: LOG_LEVEL
+              value: "INFO"
+            # Filter: only forward these event reasons
+            - name: WATCH_REASONS
+              value: "BackOff,OOMKilling,Failed,FailedScheduling,Evicted,Unhealthy,NodeNotReady,FreeDiskSpaceFailed"
+            - name: NAMESPACE_EXCLUDE
+              value: "kube-system"
+
+          volumeMounts:
+            - name: app-code
+              mountPath: /app
+
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+
+      volumes:
+        - name: app-code
+          configMap:
+            name: event-watcher-code
+
+      restartPolicy: Always

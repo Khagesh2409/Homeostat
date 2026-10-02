@@ -1,0 +1,12 @@
+---
+# Production overlay — applies on top of the base
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: homeostat
+
+resources:
+  - ../../base
+
+# No patches needed for prod yet — prod == base for now
+# Add patches here as the system matures (e.g. replica counts, resource limits)

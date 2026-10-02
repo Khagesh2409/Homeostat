@@ -1,0 +1,132 @@
+---
+# The event watcher Python script, stored as a ConfigMap so we don't
+# need to build a custom Docker image. Loaded directly from a volume.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: event-watcher-code
+  namespace: homeostat
+data:
+  event_watcher.py: |
+    """
+    Kubernetes Event Watcher
+    Watches cluster events and forwards Warning events to the Homeostat agent.
+
+    Design decisions:
+    - Uses the kubernetes Python client (in-cluster config via ServiceAccount)
+    - Deduplication window: same reason+object within 60s is sent only once
+    - Forwards as structured JSON, never raw event blobs
+    - Fails safe: if agent is unreachable, logs and continues watching
+    """
+
+    import json
+    import logging
+    import os
+    import time
+    from collections import defaultdict
+    from datetime import datetime, timezone
+
+    import httpx
+    from kubernetes import client, config, watch
+
+    logging.basicConfig(
+        level=os.environ.get("LOG_LEVEL", "INFO"),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    log = logging.getLogger("event-watcher")
+
+    AGENT_EVENTS_URL = os.environ["AGENT_EVENTS_URL"]
+    WATCH_REASONS = set(os.environ.get("WATCH_REASONS", "BackOff,Failed").split(","))
+    NAMESPACE_EXCLUDE = set(os.environ.get("NAMESPACE_EXCLUDE", "kube-system").split(","))
+    DEDUP_WINDOW_SECONDS = 60
+
+
+    def main() -> None:
+        # Load in-cluster config (uses ServiceAccount token mounted by K8s)
+        config.load_incluster_config()
+        v1 = client.CoreV1Api()
+
+        log.info("Event watcher started. Watching for reasons: %s", WATCH_REASONS)
+        log.info("Forwarding to: %s", AGENT_EVENTS_URL)
+
+        # Deduplication: (namespace, name, reason) -> last_sent_timestamp
+        sent: dict[tuple, float] = defaultdict(float)
+
+        w = watch.Watch()
+        while True:
+            try:
+                for raw_event in w.stream(v1.list_event_for_all_namespaces, timeout_seconds=300):
+                    process_event(raw_event, sent)
+            except Exception as exc:
+                log.warning("Watch stream error (will restart): %s", exc)
+                time.sleep(5)
+
+
+    def process_event(raw_event: dict, sent: dict) -> None:
+        event_type = raw_event.get("type", "")
+        obj = raw_event.get("object")
+
+        if obj is None or event_type not in ("ADDED", "MODIFIED"):
+            return
+
+        namespace = getattr(obj.metadata, "namespace", "") or ""
+        if namespace in NAMESPACE_EXCLUDE:
+            return
+
+        reason = getattr(obj, "reason", "") or ""
+        event_kind = getattr(obj, "type", "") or ""
+
+        # Only care about Warning events matching our filter
+        if event_kind != "Warning" or reason not in WATCH_REASONS:
+            return
+
+        name = getattr(obj.metadata, "name", "") or ""
+        involved = obj.involved_object
+        resource_name = getattr(involved, "name", "") or ""
+        resource_kind = getattr(involved, "kind", "") or ""
+        message = getattr(obj, "message", "") or ""
+        count = getattr(obj, "count", 1) or 1
+
+        dedup_key = (namespace, resource_name, reason)
+        now = time.monotonic()
+        if now - sent[dedup_key] < DEDUP_WINDOW_SECONDS:
+            return  # Already forwarded this recently
+
+        sent[dedup_key] = now
+
+        payload = {
+            "source": "k8s_event",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "namespace": namespace,
+            "reason": reason,
+            "resource_kind": resource_kind,
+            "resource_name": resource_name,
+            "message": message,
+            "count": count,
+            "event_name": name,
+        }
+
+        forward(payload)
+
+
+    def forward(payload: dict) -> None:
+        try:
+            with httpx.Client(timeout=5.0) as http:
+                resp = http.post(AGENT_EVENTS_URL, json=payload)
+                if resp.status_code == 200:
+                    log.info(
+                        "Forwarded event: %s/%s (%s)",
+                        payload["namespace"],
+                        payload["resource_name"],
+                        payload["reason"],
+                    )
+                else:
+                    log.warning("Agent returned %d for event forward", resp.status_code)
+        except httpx.RequestError as exc:
+            # Agent is down or unreachable — log and continue watching
+            # The agent being down is itself an alert condition (HomeostatAgentDown)
+            log.warning("Could not forward event to agent: %s", exc)
+
+
+    if __name__ == "__main__":
+        main()
