@@ -11,6 +11,24 @@ metadata:
     release: monitoring                # picked up by prometheus-operator
 spec:
   groups:
+    # ── K3s false positives — suppress ───────────────────────
+    # K3s embeds scheduler, controller-manager, and kube-proxy internally.
+    # They don't expose individual scrape targets so these always fire falsely.
+    - name: k3s-suppressions
+      rules:
+        - alert: KubeSchedulerDown
+          expr: "vector(0)"   # always inactive — suppresses the default rule
+          labels:
+            severity: none
+        - alert: KubeControllerManagerDown
+          expr: "vector(0)"
+          labels:
+            severity: none
+        - alert: KubeProxyDown
+          expr: "vector(0)"
+          labels:
+            severity: none
+
     # ── Pod Health ────────────────────────────────────────────
     - name: pod-health
       interval: 15s

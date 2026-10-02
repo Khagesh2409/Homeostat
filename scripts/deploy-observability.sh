@@ -22,8 +22,9 @@ echo ""
 
 # ── Step 1: Download kubeconfig from node ─────────────────────
 echo "→ Downloading kubeconfig from node..."
-mkdir -p ~/.kube
-ssh -i ~/.ssh/homeostat-key.pem \
+KUBECONFIG_PATH="$HOME/.kube/homeostat-config"
+mkdir -p "$HOME/.kube"
+ssh -i "$HOME/.ssh/homeostat-key.pem" \
     -o StrictHostKeyChecking=no \
     ubuntu@"$NODE_IP" \
     "sudo cat /etc/rancher/k3s/k3s.yaml" \
