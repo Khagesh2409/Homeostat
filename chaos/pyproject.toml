@@ -11,6 +11,7 @@ dependencies = [
     "boto3>=1.35.0",
     "botocore>=1.35.0",
     "httpx>=0.27.0",
+    "matplotlib>=3.11.2",
     "pydantic>=2.9.0",
     "structlog>=24.4.0",
 ]
@@ -26,7 +27,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["framework", "scenarios", "recorder"]
+packages = ["framework", "scenarios", "recorder", "experiments", "analysis"]
 
 [tool.ruff]
 target-version = "py312"
@@ -38,7 +39,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["boto3.*", "botocore.*"]
+module = ["boto3.*", "botocore.*", "matplotlib.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

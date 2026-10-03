@@ -870,10 +870,10 @@ stateDiagram-v2
    - Retrieval precision drops below 80%
 
 **Deliverables:**
-- [ ] `chaos/experiments/learning_curve.py`
-- [ ] `chaos/analysis/plot.py`
-- [ ] `chaos/analysis/stats.py`
-- [ ] Example learning curve report (markdown + plots)
+- [x] `chaos/experiments/learning_curve.py`
+- [x] `chaos/analysis/plot.py`
+- [x] `chaos/analysis/stats.py`
+- [x] Example learning curve report (markdown + plots)
 
 ---
 
