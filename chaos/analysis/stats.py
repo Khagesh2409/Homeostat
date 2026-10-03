@@ -213,11 +213,11 @@ def calculate_learning_curve_stats(
 
     # Two-sample t-test comparing Phase A vs Phase B
     t_stat, p_val = two_sample_t_test(phase_a.recovery_times_s, phase_b.recovery_times_s)
-    is_significant = bool(p_val < 0.05 and mttr_red_pct > 0)
+    is_significant = p_val < 0.05 and mttr_red_pct > 0
 
     # Memory ablation regression verification:
     # Phase C recovery time should regress towards Phase A levels (at least 75% of Phase A MTTR)
-    ablation_regressed = bool(
+    ablation_regressed = (
         phase_a.mean_recovery_s == 0
         or (phase_c.mean_recovery_s >= 0.75 * phase_a.mean_recovery_s)
     )
@@ -227,8 +227,8 @@ def calculate_learning_curve_stats(
         + phase_b.safety_violations_count
         + phase_c.safety_violations_count
     )
-    safety_met = bool(total_violations == 0)
-    precision_met = bool(phase_b.retrieval_precision >= min_precision)
+    safety_met = total_violations == 0
+    precision_met = phase_b.retrieval_precision >= min_precision
 
     failure_reasons: list[str] = []
     if not safety_met:
