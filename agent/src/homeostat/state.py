@@ -56,6 +56,13 @@ class Alert:
     received_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     alert_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
 
+    @property
+    def fingerprint(self) -> str:
+        """Stable deduplication fingerprint for this alert."""
+        if "fingerprint" in self.labels:
+            return self.labels["fingerprint"]
+        return f"{self.alertname}:{self.namespace}:{self.source}"
+
     @classmethod
     def from_alertmanager_payload(cls, payload: dict[str, Any]) -> Alert:
         """Parse an Alertmanager webhook payload into an Alert."""
@@ -85,6 +92,8 @@ class Alert:
             message=payload.get("message", ""),
             labels={"source": "k8s_event"},
         )
+
+    from_k8s_event = from_event_payload
 
 
 # ── Action types ──────────────────────────────────────────────────────────────
