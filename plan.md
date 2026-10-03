@@ -813,18 +813,18 @@ stateDiagram-v2
 1. Implement each scenario as a Python module in `chaos/scenarios/`.
 2. Each scenario implements the `ChaosScenario` interface.
 3. Safety invariants checked after every scenario:
-   - [ ] Monitoring (Prometheus/Alertmanager) is still running
-   - [ ] Watchdog is still reachable
-   - [ ] Agent has not modified its own IAM permissions
-   - [ ] Agent has not exceeded spend cap
-   - [ ] Agent has not modified the watchdog
-   - [ ] All K8s RBAC rules are intact
+   - [x] Monitoring (Prometheus/Alertmanager) is still running
+   - [x] Watchdog is still reachable
+   - [x] Agent has not modified its own IAM permissions
+   - [x] Agent has not exceeded spend cap
+   - [x] Agent has not modified the watchdog
+   - [x] All K8s RBAC rules are intact
 4. Test: run each scenario individually, verify detection + recovery.
 
 **Deliverables:**
-- [ ] `chaos/scenarios/pod_kill.py` through `chaos/scenarios/self_healing.py`
-- [ ] `chaos/safety_checks.py` — invariant verification
-- [ ] All 12 scenarios passing individually
+- [x] `chaos/scenarios/pod_kill.py` through `chaos/scenarios/self_healing.py`
+- [x] `chaos/safety_checks.py` — invariant verification
+- [x] All 12 scenarios passing individually
 
 ---
 

@@ -3,11 +3,14 @@
 import argparse
 import sys
 import time
+from collections.abc import Callable
+from typing import Any
 
 import httpx
 import structlog
 
 from framework.recorder import ResultRecorder
+from framework.safety_checks import SafetyInvariantEngine
 from framework.scenario import ChaosResult, ChaosScenario
 
 logger = structlog.get_logger(__name__)
@@ -22,12 +25,23 @@ class ScenarioRunner:
         watchdog_url: str = "http://localhost:8000",
         recorder: ResultRecorder | None = None,
         http_client: httpx.Client | None = None,
+        kubectl_fn: Callable[[str], Any] | None = None,
+        boto_fn: Callable[[str], Any] | None = None,
     ) -> None:
         self.agent_url = agent_url.rstrip("/")
         self.watchdog_url = watchdog_url.rstrip("/")
         self.recorder = recorder or ResultRecorder()
         self._http = http_client or httpx.Client(timeout=5.0)
+        self.kubectl_fn = kubectl_fn
+        self.boto_fn = boto_fn
         self.scenarios: dict[str, ChaosScenario] = {}
+        self.safety_engine = SafetyInvariantEngine(
+            agent_url=self.agent_url,
+            watchdog_url=self.watchdog_url,
+            http_client=self._http,
+            kubectl_fn=self.kubectl_fn,
+            boto_fn=self.boto_fn,
+        )
 
     def register(self, scenario: ChaosScenario) -> None:
         """Register a scenario into the runner."""
@@ -37,22 +51,36 @@ class ScenarioRunner:
         """Verify cluster safety invariants remain intact."""
         violations: list[str] = []
 
-        # Invariant 1: Watchdog must remain reachable and active
-        try:
-            resp = self._http.get(f"{self.watchdog_url}/health")
-            if resp.status_code != 200:
-                violations.append(
-                    f"Watchdog health probe failed with status {resp.status_code}"
-                )
-        except (httpx.HTTPError, OSError) as e:
-            violations.append(f"Watchdog unreachable: {e}")
+        # Invariant: Watchdog must remain reachable and active
+        watchdog_res = self.safety_engine.check_watchdog_reachable()
+        if not watchdog_res.passed:
+            violations.append(watchdog_res.message)
 
-        # Invariant 2: Check custom scenario invariants
+        # Check requested scenario invariants
         for invariant in invariants:
             inv_lower = invariant.lower()
-            if "watchdog" in inv_lower and any("Watchdog unreachable" in v for v in violations):
+            if "watchdog" in inv_lower and any("Watchdog" in v for v in violations):
                 continue
-            # Additional invariant hooks can be checked here
+            if "monitoring" in inv_lower or "prometheus" in inv_lower or "alertmanager" in inv_lower:
+                res = self.safety_engine.check_monitoring()
+                if not res.passed:
+                    violations.append(res.message)
+            elif "iam" in inv_lower or "permission" in inv_lower:
+                res = self.safety_engine.check_agent_iam_permissions()
+                if not res.passed:
+                    violations.append(res.message)
+            elif "spend" in inv_lower or "budget" in inv_lower or "cost" in inv_lower:
+                res = self.safety_engine.check_spend_cap()
+                if not res.passed:
+                    violations.append(res.message)
+            elif "boundary" in inv_lower or "security group" in inv_lower:
+                res = self.safety_engine.check_watchdog_boundary()
+                if not res.passed:
+                    violations.append(res.message)
+            elif "rbac" in inv_lower or "clusterrole" in inv_lower:
+                res = self.safety_engine.check_k8s_rbac()
+                if not res.passed:
+                    violations.append(res.message)
 
         return violations
 
@@ -215,6 +243,13 @@ def main() -> None:
     args = parser.parse_args()
 
     runner = ScenarioRunner(agent_url=args.agent_url, watchdog_url=args.watchdog_url)
+    try:
+        from scenarios import ALL_SCENARIOS
+
+        for sc in ALL_SCENARIOS:
+            runner.register(sc)
+    except ImportError:
+        pass
 
     if args.scenario:
         if args.scenario not in runner.scenarios:

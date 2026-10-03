@@ -70,3 +70,5 @@ chaos/reports/
 # ── Build artifacts ───────────────────────────
 *.log
 response.json
+
+SESSION_HANDOFF.md
