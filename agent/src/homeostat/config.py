@@ -50,8 +50,10 @@ class Settings(BaseSettings):
 
     # ── External services ────────────────────────────────────
     alertmanager_url: str = "http://localhost:9093"
+    prometheus_url: str = "http://localhost:9090"
     watchdog_url: str = "http://localhost:8081"
     watchdog_heartbeat_interval_seconds: int = 60
+    tool_timeout_seconds: int = 30
 
 
 # Singleton — import this everywhere

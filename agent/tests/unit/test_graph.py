@@ -153,10 +153,14 @@ def test_diagnose_node(mock_boto_client: MagicMock) -> None:
     assert result["token_count"] == 150
 
 
-def test_dry_run_success() -> None:
+@patch("homeostat.tools.executor.execute_step")
+def test_dry_run_success(mock_exec: MagicMock) -> None:
     from homeostat.nodes.dry_run import dry_run, route_after_dry_run
 
-    step = ActionStep(tool="kubectl", command="delete pod nginx", dry_run_safe=True)
+    step = ActionStep(
+        tool="kubectl", command="delete_pod", args={"name": "nginx"}, dry_run_safe=True
+    )
+    mock_exec.return_value = ActionResult(step=step, success=True, dry_run=True)
     plan = ActionPlan(steps=[step], rationale="test", generated_by="llm")
     state: AgentState = {"plan": plan, "retry_count": 0}
 
