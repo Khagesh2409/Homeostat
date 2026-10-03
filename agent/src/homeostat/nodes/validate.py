@@ -64,7 +64,8 @@ def validate(state: AgentState) -> AgentState:
     else:
         log.append(
             f"[{_now()}] VALIDATE: Runbook mismatch "
-            f"(sig_match={sig_matches}, type_match={type_matches}) — discarding runbook, routing to diagnose"
+            f"(sig_match={sig_matches}, type_match={type_matches}) "
+            "— discarding runbook, routing to diagnose"
         )
         logger.info(
             "Runbook validation failed for %s (sig=%s, type=%s)",

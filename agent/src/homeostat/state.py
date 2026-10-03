@@ -10,27 +10,27 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Any, Literal, TypedDict
 
 from homeostat.preprocessor.schemas import ErrorSignature
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
 
-class AgentMode(str, Enum):
+class AgentMode(StrEnum):
     IDLE = "idle"
     INCIDENT = "incident"
     MAINTENANCE = "maintenance"
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     CRITICAL = "critical"
     WARNING = "warning"
     INFO = "info"
 
 
-class IncidentOutcome(str, Enum):
+class IncidentOutcome(StrEnum):
     RESOLVED = "resolved"
     ESCALATED = "escalated"
     IN_PROGRESS = "in_progress"
@@ -78,7 +78,10 @@ class Alert:
             alertname=payload.get("reason", "K8sEvent"),
             severity=AlertSeverity.WARNING,
             namespace=payload.get("namespace", "default"),
-            source=f"{payload.get('resource_kind', 'pod')}/{payload.get('resource_name', 'unknown')}",
+            source=(
+                f"{payload.get('resource_kind', 'pod')}/"
+                f"{payload.get('resource_name', 'unknown')}"
+            ),
             message=payload.get("message", ""),
             labels={"source": "k8s_event"},
         )
@@ -140,10 +143,6 @@ class VerificationResult:
     notes: str = ""
 
 
-# ── The main state ────────────────────────────────────────────────────────────
-
-
-from typing import TypedDict
 
 
 class AgentState(TypedDict, total=False):
@@ -171,10 +170,13 @@ class AgentState(TypedDict, total=False):
     failure_signature: str        # Structured key: "deployment/nginx:CrashLoopBackOff"
     is_tier0: bool                # True if Tier-0 can handle this deterministically
     tier0_playbook_name: str      # Which Tier-0 playbook matched
+    tier0_target: str             # Cooldown target the playbook acted on
+    tier0_miss: bool              # Tier-0 acted but verification failed
+    verify_steps: list[ActionStep]  # Read-only checks proving the fix worked
 
     # ── Memory / runbook lookup ───────────────────────────────
     retrieved_runbook: dict[str, Any] | None    # The runbook from DynamoDB, if found
-    runbook_confidence: float            # 0.0–1.0
+    runbook_confidence: float            # 0.0-1.0
 
     # ── LLM reasoning ────────────────────────────────────────
     diagnosis: str                # LLM's diagnosis of the root cause

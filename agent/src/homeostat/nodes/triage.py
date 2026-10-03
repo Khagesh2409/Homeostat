@@ -17,18 +17,9 @@ import uuid
 from datetime import UTC, datetime
 
 from homeostat.state import AgentMode, AgentState, Alert, IncidentOutcome
+from homeostat.tier0.registry import is_tier0_candidate
 
 logger = logging.getLogger(__name__)
-
-# Tier-0 eligible alert names — these get fast-pathed without LLM
-_TIER0_ALERTS = {
-    "KubePodCrashLooping",
-    "KubePodNotReady",
-    "KubePodOOMKilled",
-    "NodeDiskPressure",
-    "NodeDiskCritical",
-    "TargetDown",
-}
 
 
 def triage(state: AgentState) -> AgentState:
@@ -60,8 +51,8 @@ def triage(state: AgentState) -> AgentState:
     # Format: "<normalized_source>:<alertname>"
     failure_signature = f"{alert.source}:{alert.alertname}"
 
-    # Decide if Tier-0 can handle this
-    is_tier0 = alert.alertname in _TIER0_ALERTS
+    # Decide if Tier-0 can handle this (alertname gate; tier0 node does the full match)
+    is_tier0 = is_tier0_candidate(alert)
 
     routing = "tier0" if is_tier0 else "memory_lookup"
     log.append(f"[{_now()}] TRIAGE: Routing to {routing} (failure_signature={failure_signature})")
@@ -77,6 +68,7 @@ def triage(state: AgentState) -> AgentState:
         "failure_signature": failure_signature,
         "is_tier0": is_tier0,
         "tier0_playbook_name": "",
+        "tier0_miss": False,
         "mode": AgentMode.INCIDENT,
         "retry_count": state.get("retry_count", 0),
         "max_retries": state.get("max_retries", 3),

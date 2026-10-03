@@ -32,9 +32,17 @@ MAX_SIGNATURES_PER_WINDOW = 10
 
 _NORMALIZERS: list[tuple[re.Pattern[str], str]] = [
     # ISO timestamps: 2024-01-15T10:23:45.123Z
-    (re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?"), "<TS>"),
+    (
+        re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?"),
+        "<TS>",
+    ),
     # UUIDs — MUST come before EPOCH/HEX so the dashed format is matched whole
-    (re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE), "<UUID>"),
+    (
+        re.compile(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE
+        ),
+        "<UUID>",
+    ),
     # Unix timestamps (10-digit epoch or with milliseconds)
     (re.compile(r"\b\d{10,13}\b"), "<EPOCH>"),
     # IPv6 addresses
@@ -62,6 +70,11 @@ _NORMALIZERS: list[tuple[re.Pattern[str], str]] = [
 
 _CATEGORY_KEYWORDS: list[tuple[str, str]] = [
     # Specific patterns MUST come before generic ones ("Error" is last resort)
+    # Image pull failures MUST come before the generic BackOff keywords, since
+    # "ImagePullBackOff" and "Back-off pulling image" both contain them.
+    ("ImagePullBackOff",   "ImagePullBackOff"),
+    ("ErrImagePull",       "ImagePullBackOff"),
+    ("pulling image",      "ImagePullBackOff"),
     ("CrashLoopBackOff",  "CrashLoopBackOff"),
     ("Back-off",           "CrashLoopBackOff"),  # K8s uses "Back-off" in event messages
     ("BackOff",            "CrashLoopBackOff"),
@@ -71,8 +84,6 @@ _CATEGORY_KEYWORDS: list[tuple[str, str]] = [
     ("killed",             "OOMKilled"),
     ("FailedScheduling",   "FailedScheduling"),
     ("Evicted",            "Evicted"),
-    ("ImagePullBackOff",   "ImagePullBackOff"),
-    ("ErrImagePull",       "ImagePullBackOff"),
     ("Unhealthy",          "Unhealthy"),
     ("readiness probe",    "Unhealthy"),
     ("liveness probe",     "Unhealthy"),
@@ -180,7 +191,7 @@ class LogClusterer:
             # Short hash of the template for deduplication
             pattern_hash = hashlib.sha256(template.encode()).hexdigest()[:8]
 
-            timestamps = [l.timestamp for l in cluster_lines]
+            timestamps = [line.timestamp for line in cluster_lines]
 
             sig = ErrorSignature(
                 source=norm_source,

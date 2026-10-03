@@ -70,7 +70,10 @@ class FailureSignature:
     @property
     def key(self) -> str:
         """The DynamoDB partition key."""
-        return f"{self.source_type}:{self.error_category}:{self.affected_resource}:{self.context_hash}"
+        return (
+            f"{self.source_type}:{self.error_category}:"
+            f"{self.affected_resource}:{self.context_hash}"
+        )
 
     def __str__(self) -> str:
         return self.key
@@ -179,7 +182,12 @@ class Runbook:
             context_hash=parts[3],
         )
         action_plan = [
-            ActionStep(tool=s["tool"], action=s["action"], args=s.get("args", {}), dry_run=s.get("dry_run", True))
+            ActionStep(
+                tool=s["tool"],
+                action=s["action"],
+                args=s.get("args", {}),
+                dry_run=s.get("dry_run", True),
+            )
             for s in json.loads(item["action_plan"])
         ]
         return cls(

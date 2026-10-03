@@ -59,7 +59,7 @@ class ErrorSignature:
         return (
             f"[{self.category}] {self.source} "
             f"(ns={self.namespace}, count={self.count}, "
-            f"window={self.first_seen.strftime('%H:%M:%S')}–{self.last_seen.strftime('%H:%M:%S')})\n"
+            f"window={self.first_seen.strftime('%H:%M:%S')}-{self.last_seen.strftime('%H:%M:%S')})\n"
             f"  Sample: {self.sample_message}"
         )
 

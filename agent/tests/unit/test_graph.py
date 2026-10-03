@@ -7,7 +7,15 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-from homeostat.state import AgentMode, AgentState, Alert, AlertSeverity
+from homeostat.state import (
+    ActionPlan,
+    ActionResult,
+    ActionStep,
+    AgentMode,
+    AgentState,
+    Alert,
+    AlertSeverity,
+)
 
 
 def test_triage_tier0_routing() -> None:
@@ -119,8 +127,11 @@ def test_diagnose_node(mock_boto_client: MagicMock) -> None:
     mock_response = {
         "body": MagicMock(
             read=lambda: json.dumps({
-                "content": [{"type": "text", "text": '{"root_cause": "OOM due to memory leak", "confidence": 0.9}'}],
-                "usage": {"input_tokens": 100, "output_tokens": 50}
+                "content": [{
+                    "type": "text",
+                    "text": '{"root_cause": "OOM due to memory leak", "confidence": 0.9}',
+                }],
+                "usage": {"input_tokens": 100, "output_tokens": 50},
             }).encode("utf-8")
         )
     }
@@ -140,3 +151,68 @@ def test_diagnose_node(mock_boto_client: MagicMock) -> None:
     assert "OOM due to memory leak" in result["diagnosis"]
     assert result["llm_calls"] == 1
     assert result["token_count"] == 150
+
+
+def test_dry_run_success() -> None:
+    from homeostat.nodes.dry_run import dry_run, route_after_dry_run
+
+    step = ActionStep(tool="kubectl", command="delete pod nginx", dry_run_safe=True)
+    plan = ActionPlan(steps=[step], rationale="test", generated_by="llm")
+    state: AgentState = {"plan": plan, "retry_count": 0}
+
+    result = dry_run(state)
+    assert result["dry_run_result"].all_passed is True
+
+    state.update(result)
+    assert route_after_dry_run(state) == "execute"
+
+
+@patch("homeostat.tools.executor.execute_step")
+def test_dry_run_llm_failure_routes_to_diagnose_then_escalate(mock_exec: MagicMock) -> None:
+    from homeostat.nodes.dry_run import dry_run, route_after_dry_run
+
+    step = ActionStep(tool="kubectl", command="delete pod nginx", dry_run_safe=True)
+    mock_exec.return_value = ActionResult(step=step, success=False, error="Dry run rejected")
+
+    plan = ActionPlan(steps=[step], rationale="test", generated_by="llm")
+    state: AgentState = {"plan": plan, "retry_count": 0, "max_retries": 2}
+
+    # Attempt 1
+    result1 = dry_run(state)
+    assert result1["retry_count"] == 1
+    state.update(result1)
+    assert route_after_dry_run(state) == "diagnose"
+
+    # Attempt 2 -> hits max_retries
+    result2 = dry_run(state)
+    assert result2["retry_count"] == 2
+    state.update(result2)
+    assert route_after_dry_run(state) == "escalate"
+
+
+@patch("homeostat.tools.executor.execute_step")
+def test_dry_run_tier0_failure_records_miss(mock_exec: MagicMock) -> None:
+    from homeostat.nodes.dry_run import dry_run, route_after_dry_run
+    from homeostat.tier0.cooldown import default_tracker
+
+    default_tracker.reset()
+    step = ActionStep(tool="kubectl", command="delete pod nginx", dry_run_safe=True)
+    mock_exec.return_value = ActionResult(step=step, success=False, error="Simulated failure")
+
+    plan = ActionPlan(steps=[step], rationale="test", generated_by="tier0")
+    state: AgentState = {
+        "plan": plan,
+        "tier0_playbook_name": "pod-restart",
+        "tier0_target": "default/workload/nginx",
+        "retry_count": 0,
+    }
+
+    result = dry_run(state)
+    assert result["tier0_miss"] is True
+    assert result["tier0_playbook_name"] == ""
+    assert "retry_count" not in result  # Doesn't burn LLM retry count
+
+    state.update(result)
+    assert route_after_dry_run(state) == "diagnose"
+    assert default_tracker.misses("pod-restart:default/workload/nginx") == 1
+

@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     max_signatures_per_window: int = 10     # Cap how many error clusters we show the LLM
 
     # ── Server ───────────────────────────────────────────────
-    server_host: str = "0.0.0.0"
+    server_host: str = "0.0.0.0"  # noqa: S104
     server_port: int = 8080
 
     # ── External services ────────────────────────────────────

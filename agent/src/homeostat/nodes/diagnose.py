@@ -67,7 +67,9 @@ def diagnose(state: AgentState) -> AgentState:
 
     # Format error signatures for the prompt
     if error_signatures:
-        sig_text = "\n".join(f"  {i+1}. {s.to_prompt_text()}" for i, s in enumerate(error_signatures[:10]))
+        sig_text = "\n".join(
+            f"  {i + 1}. {s.to_prompt_text()}" for i, s in enumerate(error_signatures[:10])
+        )
     else:
         sig_text = "  (no error signatures — alert only)"
 
@@ -81,7 +83,10 @@ def diagnose(state: AgentState) -> AgentState:
     )
 
     if retry_count > 0:
-        prompt += f"\n\nNote: This is retry #{retry_count}. Previous attempts failed — consider a different approach."
+        prompt += (
+            f"\n\nNote: This is retry #{retry_count}. "
+            "Previous attempts failed — consider a different approach."
+        )
 
     log.append(f"[{_now()}] DIAGNOSE: Calling LLM for root cause analysis (retry={retry_count})")
 

@@ -25,7 +25,7 @@ COST_PER_1K_OUTPUT = 0.00125
 def call_llm(prompt: str) -> tuple[str, dict[str, Any]]:
     """
     Call Claude via AWS Bedrock.
-    
+
     Returns:
         A tuple of (response_text, usage_dict)
     """
@@ -63,7 +63,10 @@ def call_llm(prompt: str) -> tuple[str, dict[str, Any]]:
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
 
-        cost_usd = (input_tokens / 1000.0 * COST_PER_1K_INPUT) + (output_tokens / 1000.0 * COST_PER_1K_OUTPUT)
+        cost_usd = (
+            input_tokens / 1000.0 * COST_PER_1K_INPUT
+            + output_tokens / 1000.0 * COST_PER_1K_OUTPUT
+        )
 
         usage_info = {
             "input_tokens": input_tokens,

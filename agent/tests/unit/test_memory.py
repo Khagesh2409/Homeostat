@@ -121,7 +121,9 @@ class TestRunbook:
             diagnosis="Pod is crash-looping due to bad config",
             discriminating_check="Verify pod restarts > 3 in last 5 minutes",
             action_plan=[
-                ActionStep(tool="kubectl_tool", action="rollout_restart", args={"deployment": "nginx"}),
+                ActionStep(
+                    tool="kubectl_tool", action="rollout_restart", args={"deployment": "nginx"}
+                ),
             ],
             times_used=times_used,
             times_succeeded=times_succeeded,

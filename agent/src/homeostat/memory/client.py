@@ -58,7 +58,13 @@ class RunbookClient:
         except ClientError:
             return None
 
-    def save_runbook(self, failure_signature: str, diagnosis: str, plan_steps: list[dict[str, Any]], rationale: str) -> bool:
+    def save_runbook(
+        self,
+        failure_signature: str,
+        diagnosis: str,
+        plan_steps: list[dict[str, Any]],
+        rationale: str,
+    ) -> bool:
         """Convenience method for LangGraph nodes."""
         item = {
             "failure_signature": failure_signature,

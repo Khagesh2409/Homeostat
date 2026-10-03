@@ -21,7 +21,7 @@ def execute(state: AgentState) -> AgentState:
     Input state keys:  plan
     Output state keys: actions_taken, incident_log
     """
-    from homeostat.tools.executor import execute_step  # type: ignore[import-untyped]
+    from homeostat.tools.executor import execute_step
 
     log = list(state.get("incident_log", []))
     plan = state.get("plan")

@@ -36,7 +36,8 @@ You can use the following tools in your plan:
 - The plan MUST be a sequence of steps.
 - Every step MUST use one of the tools above.
 - Be conservative. Do not delete stateful data (PVCs, databases) unless absolutely necessary.
-- If the diagnosis is "unknown", the plan should focus on data gathering (e.g., describing the pod or checking node resources).
+- If the diagnosis is "unknown", the plan should focus on data gathering
+  (e.g., describing the pod or checking node resources).
 
 Respond in this exact JSON format:
 {{

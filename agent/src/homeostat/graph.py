@@ -10,6 +10,7 @@ import logging
 from typing import Any
 
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from homeostat.nodes import (
     diagnose,
@@ -35,9 +36,6 @@ from homeostat.nodes import (
 from homeostat.state import AgentState
 
 logger = logging.getLogger(__name__)
-
-
-from langgraph.graph.state import CompiledStateGraph
 
 
 def build_graph() -> CompiledStateGraph[Any, Any, Any]:

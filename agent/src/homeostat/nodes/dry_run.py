@@ -11,6 +11,8 @@ import logging
 from datetime import UTC, datetime
 
 from homeostat.state import AgentState, DryRunResult
+from homeostat.tier0.cooldown import default_tracker
+from homeostat.tier0.registry import cooldown_key
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +24,7 @@ def dry_run(state: AgentState) -> AgentState:
     Input state keys:  plan
     Output state keys: dry_run_result, incident_log
     """
-    from homeostat.tools.executor import execute_step  # type: ignore[import-untyped]
+    from homeostat.tools.executor import execute_step
 
     log = list(state.get("incident_log", []))
     plan = state.get("plan")
@@ -60,15 +62,30 @@ def dry_run(state: AgentState) -> AgentState:
         failure_reason=failure_reason,
     )
 
+    updates: AgentState = {
+        "dry_run_result": dry_run_result,
+        "incident_log": log,
+    }
+
     if all_passed:
         logger.info("Dry-run passed for %d steps", len(plan.steps))
     else:
         logger.warning("Dry-run failed: %s", failure_reason)
+        if plan.generated_by == "tier0":
+            playbook = state.get("tier0_playbook_name", "")
+            target = state.get("tier0_target", "")
+            if playbook and target:
+                default_tracker.record_miss(cooldown_key(playbook, target))
+            updates["tier0_miss"] = True
+            updates["tier0_playbook_name"] = ""
+            updates["verify_steps"] = []
+            log.append(f"[{_now()}] DRY_RUN: Tier-0 plan failed dry-run — escalating to LLM")
+        else:
+            retry_count = state.get("retry_count", 0) + 1
+            updates["retry_count"] = retry_count
+            log.append(f"[{_now()}] DRY_RUN: Dry-run failed (attempt {retry_count})")
 
-    return {
-        "dry_run_result": dry_run_result,
-        "incident_log": log,
-    }
+    return updates
 
 
 def route_after_dry_run(state: AgentState) -> str:

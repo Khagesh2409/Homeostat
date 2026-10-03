@@ -12,6 +12,8 @@ import time
 from datetime import UTC, datetime
 
 from homeostat.state import AgentState, VerificationResult
+from homeostat.tier0.cooldown import default_tracker
+from homeostat.tier0.registry import cooldown_key
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,6 @@ def verify(state: AgentState) -> AgentState:
     # but in a production setup this would poll the metrics/alerts.
 
     log = list(state.get("incident_log", []))
-    alert = state.get("current_alert")
 
     log.append(f"[{_now()}] VERIFY: Checking if incident is resolved")
 
@@ -49,17 +50,32 @@ def verify(state: AgentState) -> AgentState:
         checks_failed=checks_failed,
     )
 
+    updates: AgentState = {"verification_result": result}
+
+    executed_plan = state.get("plan")
+    ran_tier0_plan = executed_plan is not None and executed_plan.generated_by == "tier0"
+
     if success:
         log.append(f"[{_now()}] VERIFY: ✓ Recovery verified")
         logger.info("Incident verified resolved.")
+    elif ran_tier0_plan and (playbook := state.get("tier0_playbook_name")):
+        # Tier-0 miss: stand Tier-0 down for this target and hand straight to the LLM.
+        # This doesn't consume a retry — the LLM gets its full budget.
+        target = state.get("tier0_target", "")
+        default_tracker.record_miss(cooldown_key(playbook, target))
+        log.append(
+            f"[{_now()}] VERIFY: ✗ Tier-0 miss on '{playbook}' ({target}) — escalating to LLM"
+        )
+        logger.warning("Tier-0 playbook %s missed on %s", playbook, target)
+        updates.update({"tier0_miss": True, "tier0_playbook_name": "", "verify_steps": []})
     else:
-        log.append(f"[{_now()}] VERIFY: ✗ Recovery failed to verify")
+        retry_count = state.get("retry_count", 0) + 1
+        log.append(f"[{_now()}] VERIFY: ✗ Recovery failed to verify (attempt {retry_count})")
         logger.warning("Incident recovery failed verification.")
+        updates["retry_count"] = retry_count
 
-    return {
-        "verification_result": result,
-        "incident_log": log,
-    }
+    updates["incident_log"] = log
+    return updates
 
 
 def route_after_verify(state: AgentState) -> str:
@@ -72,11 +88,8 @@ def route_after_verify(state: AgentState) -> str:
     if result and result.success:
         return "write_runbook"
 
-    # Increment retry count before routing to diagnose or escalate
-    retry_count = state.get("retry_count", 0) + 1
-    max_retries = state.get("max_retries", 3)
-
-    if retry_count >= max_retries:
+    # retry_count was already incremented by the verify node (Tier-0 misses don't count)
+    if state.get("retry_count", 0) >= state.get("max_retries", 3):
         return "escalate"
 
     return "diagnose"
