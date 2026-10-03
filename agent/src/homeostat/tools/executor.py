@@ -14,6 +14,7 @@ from homeostat.tools.kubectl import default_kubectl
 from homeostat.tools.memory import default_memory
 from homeostat.tools.prometheus import default_prometheus
 from homeostat.tools.scope import check_scope
+from homeostat.tools.shadow import default_shadow
 from homeostat.tools.system import default_system
 from homeostat.tools.terraform import default_terraform
 
@@ -74,6 +75,8 @@ def execute_step(step: ActionStep, dry_run: bool = False) -> ActionResult:
             res = default_prometheus.run_command(step.command, step.args, dry_run=dry_run)
         elif tool_key == "memory":
             res = default_memory.run_command(step.command, step.args, dry_run=dry_run)
+        elif tool_key == "shadow":
+            res = default_shadow.run_command(step.command, step.args, dry_run=dry_run)
         else:
             return ActionResult(
                 step=step,

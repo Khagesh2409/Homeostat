@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homeostat-shadow
+  labels:
+    app.kubernetes.io/managed-by: homeostat
+    app.kubernetes.io/part-of: homeostat
+    homeostat.io/environment: shadow

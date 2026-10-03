@@ -206,5 +206,11 @@ class AgentState(TypedDict, total=False):
     token_count: int              # Running total of tokens used
     llm_calls: int                # Number of LLM calls made this incident
 
+    # ── Maintenance mode tracking ─────────────────────────────
+    maintenance_candidates: list[dict[str, Any]]
+    maintenance_outcome: str
+    maintenance_applied: list[dict[str, Any]]
+    maintenance_rejected: list[dict[str, Any]]
+
     # ── Human-readable incident log ───────────────────────────
     incident_log: list[str]       # Append-only log of what happened

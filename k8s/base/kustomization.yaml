@@ -7,6 +7,7 @@ namespace: homeostat
 
 resources:
   - agent
+  - shadow
   - event-watcher/deployment.yml
   - event-watcher/configmap.yml
   - prometheus/alert-rules.yml

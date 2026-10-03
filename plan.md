@@ -734,10 +734,10 @@ stateDiagram-v2
 5. Test: agent proposes a config change, applies to shadow, shadow health check passes, applies to self.
 
 **Deliverables:**
-- [ ] `agent/src/homeostat/nodes/maintenance.py`
-- [ ] `k8s/base/shadow/` — shadow namespace setup
-- [ ] `agent/src/homeostat/tools/shadow.py` — shadow management tool
-- [ ] Integration test: full maintenance cycle
+- [x] `agent/src/homeostat/nodes/maintenance.py`
+- [x] `k8s/base/shadow/` — shadow namespace setup
+- [x] `agent/src/homeostat/tools/shadow.py` — shadow management tool
+- [x] Integration test: full maintenance cycle
 
 ---
 
