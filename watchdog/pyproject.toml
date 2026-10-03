@@ -37,6 +37,16 @@ packages = ["src/watchdog"]
 target-version = "py312"
 line-length = 100
 
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

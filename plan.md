@@ -591,10 +591,10 @@ stateDiagram-v2
 4. Test: send a sample Alertmanager webhook, verify it enters the graph.
 
 **Deliverables:**
-- [ ] `agent/src/homeostat/server.py`
-- [ ] `agent/src/homeostat/intake.py` (queue + dedup)
-- [ ] `agent/src/homeostat/metrics.py` (Prometheus instrumentation)
-- [ ] Integration test: webhook → graph invocation
+- [x] `agent/src/homeostat/server.py`
+- [x] `agent/src/homeostat/intake.py` (queue + dedup)
+- [x] `agent/src/homeostat/metrics.py` (Prometheus instrumentation)
+- [x] Integration test: webhook → graph invocation
 
 ---
 
@@ -633,11 +633,11 @@ stateDiagram-v2
 5. Test: simulate over-budget, verify kill switch fires.
 
 **Deliverables:**
-- [ ] `watchdog/src/watchdog/service.py`
-- [ ] `watchdog/src/watchdog/rules.py`
-- [ ] `watchdog/src/watchdog/killswitch.py`
-- [ ] `terraform/05-watchdog/` — separate instance + IAM
-- [ ] Integration test: agent exceeds rate limit → watchdog intervenes
+- [x] `watchdog/src/watchdog/service.py`
+- [x] `watchdog/src/watchdog/rules.py`
+- [x] `watchdog/src/watchdog/killswitch.py`
+- [x] `terraform/05-watchdog/` — separate instance + IAM
+- [x] Integration test: agent exceeds rate limit → watchdog intervenes
 
 ---
 
