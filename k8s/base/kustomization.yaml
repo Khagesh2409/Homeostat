@@ -6,6 +6,7 @@ kind: Kustomization
 namespace: homeostat
 
 resources:
+  - agent
   - event-watcher/deployment.yml
   - event-watcher/configmap.yml
   - prometheus/alert-rules.yml

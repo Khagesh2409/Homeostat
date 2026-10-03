@@ -1,0 +1,82 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homeostat-agent
+  labels:
+    app.kubernetes.io/name: homeostat-agent
+    app.kubernetes.io/part-of: homeostat
+rules:
+  # Pods, Events, ConfigMaps, Services cluster-wide
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - pods/status
+      - events
+      - configmaps
+      - services
+      - endpoints
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+
+  # Core mutation permissions for incident recovery (pods, configmaps)
+  - apiGroups: [""]
+    resources:
+      - pods
+    verbs:
+      - delete
+
+  - apiGroups: [""]
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - update
+      - patch
+
+  # Workloads management (deployments, statefulsets, daemonsets)
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - deployments/scale
+      - deployments/rollback
+      - statefulsets
+      - daemonsets
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+
+  # Coordination leases for leader election / watchdog status
+  - apiGroups: ["coordination.k8s.io"]
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homeostat-agent
+  labels:
+    app.kubernetes.io/name: homeostat-agent
+    app.kubernetes.io/part-of: homeostat
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homeostat-agent
+subjects:
+  - kind: ServiceAccount
+    name: homeostat-agent
+    namespace: homeostat

@@ -694,8 +694,8 @@ stateDiagram-v2
 3. Deploy and verify: agent starts, registers with watchdog, receives test alert.
 
 **Deliverables:**
-- [ ] `k8s/base/agent/` — all manifests
-- [ ] `k8s/overlays/dev/` and `k8s/overlays/prod/`
+- [x] `k8s/base/agent/` — all manifests
+- [x] `k8s/overlays/dev/` and `k8s/overlays/prod/`
 - [ ] Agent pod running and healthy on K3d
 
 ---

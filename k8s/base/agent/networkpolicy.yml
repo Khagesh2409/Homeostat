@@ -1,0 +1,74 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: homeostat-agent
+  namespace: homeostat
+  labels:
+    app.kubernetes.io/name: homeostat-agent
+    app.kubernetes.io/part-of: homeostat
+spec:
+  podSelector:
+    matchLabels:
+      app: homeostat-agent
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow webhooks from Alertmanager and Kubernetes Event Watcher
+    - from:
+        - podSelector:
+            matchLabels:
+              app: event-watcher
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        - podSelector:
+            matchLabels:
+              app: alertmanager
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow outbound HTTPS to AWS APIs (Bedrock, S3, DynamoDB, SNS)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow communication to Kubernetes API server
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 6443
+    # Allow HTTP egress to Watchdog supervisor (port 8000)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow querying Prometheus metrics (port 9090)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090

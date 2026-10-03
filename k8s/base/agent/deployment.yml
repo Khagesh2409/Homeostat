@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homeostat-operator
+  namespace: homeostat
+  labels:
+    app: homeostat-agent
+    component: operator
+    app.kubernetes.io/name: homeostat-agent
+    app.kubernetes.io/part-of: homeostat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: homeostat-agent
+  template:
+    metadata:
+      labels:
+        app: homeostat-agent
+        component: operator
+        app.kubernetes.io/name: homeostat-agent
+    spec:
+      serviceAccountName: homeostat-agent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: agent
+          image: homeostat-agent:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2
+            timeoutSeconds: 3
+          env:
+            - name: HOMEOSTAT_ENVIRONMENT
+              value: "production"
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: HOMEOSTAT_LOG_LEVEL
+              value: "INFO"
+            - name: HOMEOSTAT_WATCHDOG_URL
+              value: "http://watchdog.homeostat.svc:8000"
+            - name: HOMEOSTAT_DYNAMODB_TABLE
+              value: "homeostat-runbooks"
+            - name: HOMEOSTAT_S3_BUCKET
+              value: "homeostat-terraform-state-975050226684"
+            - name: HOMEOSTAT_SERVER_PORT
+              value: "8080"
+            - name: HOMEOSTAT_SERVER_HOST
+              value: "0.0.0.0"

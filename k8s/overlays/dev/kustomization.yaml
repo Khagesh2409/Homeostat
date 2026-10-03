@@ -7,10 +7,5 @@ namespace: homeostat
 resources:
   - ../../base
 
-images:
-  - name: homeostat-agent
-    newName: 975050226684.dkr.ecr.us-east-1.amazonaws.com/homeostat-agent
-    newTag: latest
-
 patches:
   - path: patch-deployment.yml
