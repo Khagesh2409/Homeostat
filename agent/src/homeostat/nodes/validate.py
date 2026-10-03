@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 from homeostat.state import AgentState
 
@@ -46,15 +47,66 @@ def validate(state: AgentState) -> AgentState:
     sig_matches = current_alertname in runbook_sig or runbook_sig in failure_signature
 
     # Check 2: Does the resource type match? (pod vs node vs deployment)
-    runbook_source = runbook_sig.split(":")[0] if ":" in runbook_sig else ""
+    parts = runbook_sig.split(":")
+    if len(parts) >= 4:
+        runbook_resource = parts[2]
+        runbook_source_type = parts[0]
+    else:
+        runbook_resource = parts[0]
+        runbook_source_type = parts[0]
+
     current_source = alert.source
-    # Normalize: "deployment/nginx" and "pod/nginx-abc" are the same resource type
+
     def _resource_type(src: str) -> str:
         return src.split("/")[0] if "/" in src else src
 
-    type_matches = _resource_type(runbook_source) == _resource_type(current_source)
+    current_type = _resource_type(current_source)
+    type_matches = (
+        _resource_type(runbook_resource) == current_type
+        or _resource_type(runbook_source_type) == current_type
+        or (
+            runbook_source_type == "pod"
+            and current_type in {"pod", "deployment", "statefulset", "daemonset"}
+        )
+    )
 
-    if sig_matches and type_matches:
+    # Check 3: Discriminating check confirmation
+    disc_passed = True
+    disc_reason = ""
+    discriminating_check = runbook.get("discriminating_check", "").strip()
+    if discriminating_check:
+        from homeostat.memory.retrieval import RunbookRetriever
+        from homeostat.memory.schemas import FailureSignature, Runbook
+
+        retriever = RunbookRetriever()
+        context = {
+            "alertname": alert.alertname,
+            "source": alert.source,
+            "namespace": alert.namespace,
+            "severity": str(alert.severity),
+            "message": alert.message,
+        }
+        if alert.labels:
+            context.update(alert.labels)
+        state_dict: dict[str, Any] = state  # type: ignore[assignment]
+        for key in ("restart_count", "restarts", "dns_failing", "symptom"):
+            if key in state_dict:
+                context[key] = state_dict[key]
+        temp_sig = (
+            FailureSignature.from_str(runbook_sig)
+            if ":" in runbook_sig and len(runbook_sig.split(":")) >= 4
+            else FailureSignature("pod", alert.alertname, alert.source, "0000")
+        )
+        temp_rb = Runbook(
+            failure_signature=temp_sig,
+            version=int(runbook.get("version", 1)),
+            diagnosis=runbook.get("diagnosis", ""),
+            discriminating_check=discriminating_check,
+            action_plan=[],
+        )
+        disc_passed, disc_reason = retriever.confirm_discriminating_check(temp_rb, context)
+
+    if sig_matches and type_matches and disc_passed:
         log.append(
             f"[{_now()}] VALIDATE: Runbook is applicable "
             f"(sig_match={sig_matches}, type_match={type_matches}) — routing to execute"
@@ -62,15 +114,27 @@ def validate(state: AgentState) -> AgentState:
         logger.info("Runbook validation passed for %s", failure_signature)
         return {"incident_log": log}  # Keep retrieved_runbook as-is
     else:
+        reason_desc = (
+            f"sig_match={sig_matches}, type_match={type_matches}"
+            if (not sig_matches or not type_matches)
+            else f"discriminating_check failed ({disc_reason})"
+        )
         log.append(
-            f"[{_now()}] VALIDATE: Runbook mismatch "
-            f"(sig_match={sig_matches}, type_match={type_matches}) "
+            f"[{_now()}] VALIDATE: Runbook mismatch ({reason_desc}) "
             "— discarding runbook, routing to diagnose"
         )
         logger.info(
-            "Runbook validation failed for %s (sig=%s, type=%s)",
-            failure_signature, sig_matches, type_matches
+            "Runbook validation failed for %s (%s)",
+            failure_signature,
+            reason_desc,
         )
+        # Log discriminating check rejection if applicable
+        if sig_matches and type_matches and not disc_passed:
+            from homeostat.memory.writer import RunbookWriter
+
+            RunbookWriter().record_discriminating_check_failure(
+                runbook_sig, int(runbook.get("version", 1)), disc_reason
+            )
         # Clear the runbook so diagnose knows to start fresh
         return {"retrieved_runbook": None, "runbook_confidence": 0.0, "incident_log": log}
 
