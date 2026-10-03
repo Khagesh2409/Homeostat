@@ -786,9 +786,9 @@ stateDiagram-v2
 3. Store results in S3 as JSONL for analysis.
 
 **Deliverables:**
-- [ ] `chaos/framework/scenario.py`
-- [ ] `chaos/framework/runner.py`
-- [ ] `chaos/framework/recorder.py`
+- [x] `chaos/framework/scenario.py`
+- [x] `chaos/framework/runner.py`
+- [x] `chaos/framework/recorder.py`
 
 ---
 
