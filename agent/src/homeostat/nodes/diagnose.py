@@ -91,7 +91,7 @@ def diagnose(state: AgentState) -> AgentState:
     log.append(f"[{_now()}] DIAGNOSE: Calling LLM for root cause analysis (retry={retry_count})")
 
     try:
-        response, usage = call_llm(prompt)
+        response, usage = call_llm(prompt, current_spend_usd=state.get("cost_usd", 0.0))
         diagnosis_data = json.loads(response)
         diagnosis = diagnosis_data.get("root_cause", response)
 

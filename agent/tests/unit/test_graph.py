@@ -117,7 +117,7 @@ def test_validate_routing() -> None:
     assert route_after_validate(state_mismatch) == "diagnose"
 
 
-@patch("homeostat.llm.bedrock.boto3.client")
+@patch("homeostat.llm.client.boto3.client")
 def test_diagnose_node(mock_boto_client: MagicMock) -> None:
     from homeostat.nodes.diagnose import diagnose
 

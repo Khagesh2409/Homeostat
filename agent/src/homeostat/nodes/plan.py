@@ -81,7 +81,7 @@ def plan(state: AgentState) -> AgentState:
     log.append(f"[{_now()}] PLAN: Generating recovery plan via LLM")
 
     try:
-        response, usage = call_llm(prompt)
+        response, usage = call_llm(prompt, current_spend_usd=state.get("cost_usd", 0.0))
         plan_data = json.loads(response)
 
         steps = []
