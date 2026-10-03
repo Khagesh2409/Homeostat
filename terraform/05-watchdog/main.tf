@@ -124,11 +124,11 @@ resource "aws_security_group" "watchdog_sg" {
 # ──────────────────────────────────────────────────────────────
 
 resource "aws_instance" "watchdog" {
-  ami                  = data.aws_ami.ubuntu.id
-  instance_type        = var.instance_type
-  subnet_id            = data.aws_subnet.public.id
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = var.instance_type
+  subnet_id              = data.aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.watchdog_sg.id]
-  iam_instance_profile = data.aws_iam_instance_profile.watchdog.name
+  iam_instance_profile   = data.aws_iam_instance_profile.watchdog.name
 
   root_block_device {
     volume_size           = 20

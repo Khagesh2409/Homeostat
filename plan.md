@@ -659,10 +659,10 @@ stateDiagram-v2
 4. Test: `docker run` locally, send a test alert, verify response.
 
 **Deliverables:**
-- [ ] `agent/Dockerfile`
-- [ ] `watchdog/Dockerfile`
-- [ ] `terraform/06-ecr/` — ECR repos
-- [ ] CI: build + push on merge to main
+- [x] `agent/Dockerfile`
+- [x] `watchdog/Dockerfile`
+- [x] `terraform/06-ecr/` — ECR repos
+- [x] CI: build + push on merge to main
 
 ---
 
